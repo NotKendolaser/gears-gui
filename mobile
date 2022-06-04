@@ -1,0 +1,1595 @@
+if getgenv().UAGS_Loaded then
+	error("Universal Admin Game Script is already running.")
+end
+
+pcall(function()
+	getgenv().UAGS_Loaded = true
+end)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
+local MarketplaceService = game:GetService("MarketplaceService")
+local Lighting = game:GetService("Lighting")
+local Stats = game:GetService("Stats")
+
+local LocalPlayer = Players.LocalPlayer
+
+local Mouse = LocalPlayer:GetMouse()
+
+local ResetAdminClickDetector
+local AdminPads
+
+local Jails = Workspace
+
+local Pings = Stats.Network.ServerStatsItem["Data Ping"]
+
+local Dragging
+local DragInput
+local DragStart
+local StartPosition
+
+local Cooldown = false
+
+local CommandPrefix = "."
+
+local FavoritedImage = "rbxassetid://4370033185"
+local NotFavoritedImage = "rbxassetid://4335482118"
+
+local SettingsFile = "Settings.rbxxb"
+local FavoritedGearsFile = "FavoritedGears.rbxxb"
+
+local SupportedPlaces = {
+	[333164326] = {
+		Name = "Admin House!",
+		FreeAdmin = false,
+		Prefix = ":",
+		GetAdminType = "Teleport",
+		CommandCooldown = 0,
+		JailName = tostring(LocalPlayer.Name) .. "_ADONISJAIL",
+		UnPunishType = "Respawn",
+		PermAdminGamepassId = 1293677
+	},
+	[112420803] = {
+		Name = "Kohls Admin House NBC",
+		FreeAdmin = false,
+		Prefix = "",
+		GetAdminType = "Fire",
+		CommandCooldown = 0,
+		JailName = tostring(LocalPlayer.Name) .. "'s jail",
+		UnPunishType = "Command",
+		PermAdminGamepassId = 66254
+	},
+	[115670532] = {
+		Name = "Kohls Admin House BC",
+		FreeAdmin = false,
+		Prefix = "",
+		GetAdminType = "Fire",
+		CommandCooldown = 0,
+		JailName = tostring(LocalPlayer.Name) .. "'s jail",
+		UnPunishType = "Command",
+		PermAdminGamepassId = 64354
+	},
+	[6034569469] = {
+		Name = "FREE ADMIN ARENA 💥",
+		FreeAdmin = true,
+		Prefix = ":",
+		GetAdminType = nil,
+		CommandCooldown = 1,
+		JailName = tostring(LocalPlayer.Name) .. "'s JailCell",
+		UnPunishType = "Command",
+		PermAdminGamepassId = nil
+	},
+	[4522347649] = {
+		Name = "[FREE ADMIN]",
+		FreeAdmin = true,
+		Prefix = ";",
+		GetAdminType = nil,
+		CommandCooldown = 1,
+		JailName = tostring(LocalPlayer.Name) .. "'s JailCell",
+		UnPunishType = "Command",
+		PermAdminGamepassId = nil
+	},
+	[7372514282] = {
+		Name = "Cart Ride Into Rdite ! (FREE ADMIN !!)",
+		FreeAdmin = true,
+		Prefix = ";",
+		GetAdminType = nil,
+		CommandCooldown = 1,
+		JailName = tostring(LocalPlayer.Name) .. "'s JailCell",
+		UnPunishType = "Command",
+		PermAdminGamepassId = nil
+	},
+	[5023687570] = {
+		Name = "Free Owner Admin (Abuse)",
+		FreeAdmin = true,
+		Prefix = ";",
+		GetAdminType = nil,
+		CommandCooldown = 1,
+		JailName = tostring(LocalPlayer.Name) .. "'s JailCell",
+		UnPunishType = "Command",
+		PermAdminGamepassId = nil
+	},
+	[6575494256] = {
+		Name = "[FREE ADMIN] Simulator",
+		FreeAdmin = true,
+		Prefix = ";",
+		GetAdminType = nil,
+		CommandCooldown = 1,
+		JailName = tostring(LocalPlayer.Name) .. "'s JailCell",
+		UnPunishType = "Command",
+		PermAdminGamepassId = nil
+	},
+		[4778334546] = {
+		Name = "btools land",
+		FreeAdmin = true,
+		Prefix = ";",
+		GetAdminType = nil,
+		CommandCooldown = 1,
+		JailName = tostring(LocalPlayer.Name) .. "'s JailCell",
+		UnPunishType = "Command",
+		PermAdminGamepassId = nil
+	}
+}
+
+if game.PlaceId == 333164326 then
+	for Index, Object in pairs(Workspace:GetChildren()) do
+		if Object.Name == "SecureParts" then
+			if not Object:FindFirstChild("ResetPads") and not Object:FindFirstChild("AdminPads") then
+				Object:Destroy()
+			end
+		end
+	end
+
+	Storage = Workspace:WaitForChild("SecureParts")
+
+	ResetAdminClickDetector = Storage:WaitForChild("ResetPads"):FindFirstChildOfClass("ClickDetector")
+	AdminPads = Storage:WaitForChild("AdminPads")
+elseif game.PlaceId == 112420803 or game.PlaceId == 115670532 then
+	Storage = Workspace:WaitForChild("Terrain"):WaitForChild("_Game")
+
+	ResetAdminClickDetector = Storage:WaitForChild("Admin"):WaitForChild("Regen"):FindFirstChildOfClass("ClickDetector")
+	AdminPads = Storage:WaitForChild("Admin"):WaitForChild("Pads")
+	Jails = Storage:WaitForChild("Folder")
+elseif not SupportedPlaces[game.PlaceId] then
+	return error("This place is not supported")
+end
+
+if SupportedPlaces[game.PlaceId].PermAdminGamepassId then
+	OwnPermAdminGamepass = MarketplaceService:UserOwnsGamePassAsync(LocalPlayer.UserId, SupportedPlaces[game.PlaceId].PermAdminGamepassId)
+end
+
+local GearIds = {
+	["Beach Umbrella"] = 112593662,
+	["Remote Explosive Detonator"] = 74385399,
+	["Positronic Platform Producer"] = 34898883,
+	["Omega Rainbow Sword"] = 287426148,
+	["Emerald Dragon Master Staff"] = 221241923,
+	["Bat Knight Bat Sword"] = 17680660,
+	["RAIG Table"] = 110789105,
+	["BB-8"] = 1183007014,
+	["Viridian Throwing Knives"] = 629895007,
+	["Frozen Throwing Knives"] = 1215515248,
+	["Pi RAIG Table"] = 148791414,
+	["Bombo's Survival Raig Table"] = 243788010
+}
+
+local BasicGears = {
+	GearIds["Beach Umbrella"],
+	GearIds["Remote Explosive Detonator"],
+	GearIds["Positronic Platform Producer"]
+}
+
+local Gears = {
+	void = {
+		BasicGears = true,
+		GearIds = {
+			GearIds["Omega Rainbow Sword"]
+		}
+	},
+	spin = {
+		BasicGears = true,
+		GearIds = {
+			GearIds["Emerald Dragon Master Staff"]
+		}
+	},
+	fling = {
+		BasicGears = true,
+		GearIds = {
+			GearIds["RAIG Table"],
+			GearIds["Pi RAIG Table"],
+			GearIds["Bombo's Survival Raig Table"]
+		}
+	},
+	fling2 = {
+		BasicGears = false,
+		GearIds = {
+			GearIds["Beach Umbrella"],
+			GearIds["RAIG Table"],
+			GearIds["Pi RAIG Table"],
+			GearIds["Bombo's Survival Raig Table"]
+		}
+	},
+	flip = {
+		BasicGears = true,
+		GearIds = {
+			GearIds["Bat Knight Bat Sword"]
+		}
+	},
+	bb8 = {
+		BasicGears = false,
+		GearIds = {
+			GearIds["BB-8"]
+		}
+	},
+	destroy = {
+		BasicGears = false,
+		GearIds = {
+			GearIds["RAIG Table"],
+			GearIds["Viridian Throwing Knives"],
+			GearIds["Frozen Throwing Knives"]
+		}
+	}
+}
+
+function IsAdmin(Player)
+	if SupportedPlaces[game.PlaceId].FreeAdmin then
+		return true
+	else
+		if OwnPermAdminGamepass then
+			return true
+		else
+			return AdminPads:FindFirstChild(LocalPlayer.Name .. "'s admin")
+		end
+	end
+end
+
+local AvailableSettings = {
+	AutoUnJail = {
+		Aliases = {
+			"autouj",
+			"auj"
+		},
+		--Cooldown = "Heartbeat",
+		--Statement = (Jails:FindFirstChild(SupportedPlaces[game.PlaceId].JailName))
+	},
+	AutoUnPunish = {
+		Aliases = {
+		"autoup",
+			"aup"
+		},
+		--Cooldown = "Heartbeat",
+		--Statement = (Lighting:FindFirstChild(LocalPlayer.Name))
+	},
+	AutoGetAdmin = {
+		Aliases = {
+			"autoga",
+			"aga"
+		},
+		--Cooldown = "Heartbeat",
+		--Statement = (not IsAdmin(LocalPlayer))
+	},
+	AutoForceField = {
+		Aliases = {
+			"autoff",
+			"aff"
+		},
+		--Cooldown = "Heartbeat",
+		--Statement = (not LocalPlayer.Character:FindFirstChildOfClass("ForceField"))
+	},
+	AutoClear = {
+		Aliases = {
+			"autoclr",
+			"aclr",
+			"ac"
+		},
+		--Cooldown = 5,
+		--Statement = (true)
+	}
+}
+
+local Commands = {}
+
+local GearsGUI = Instance.new("ScreenGui")
+local Frame = Instance.new("Frame")
+local UICorner = Instance.new("UICorner")
+local Title = Instance.new("TextLabel")
+local Title_2 = Instance.new("TextLabel")
+local ImageLabel = Instance.new("ImageLabel")
+local UICorner_2 = Instance.new("UICorner")
+local ImageButton = Instance.new("ImageButton")
+local Frame_2 = Instance.new("Frame")
+local Gears_2 = Instance.new("ScrollingFrame")
+local UIListLayout = Instance.new("UIListLayout")
+local UIListLayout_2 = Instance.new("UIListLayout")
+local GetFavorited = Instance.new("TextButton")
+local UICorner_3 = Instance.new("UICorner")
+local ClearFavorited = Instance.new("TextButton")
+local UICorner_4 = Instance.new("UICorner")
+local UICorner_5 = Instance.new("UICorner")
+local SearchFrame = Instance.new("Frame")
+local UICorner_6 = Instance.new("UICorner")
+local Search = Instance.new("ImageLabel")
+local TextBox = Instance.new("TextBox")
+local Frame_3 = Instance.new("Frame")
+local Favorited = Instance.new("ScrollingFrame")
+local UICorner_7 = Instance.new("UICorner")
+local Storage = Instance.new("Folder")
+local Gear = Instance.new("TextButton")
+local Circle = Instance.new("ImageLabel")
+local UICorner_8 = Instance.new("UICorner")
+local Image = Instance.new("ImageLabel")
+local UICorner_9 = Instance.new("UICorner")
+local GearName = Instance.new("TextLabel")
+local Favorite = Instance.new("ImageButton")
+local UICorner_10 = Instance.new("UICorner")
+local FavoriteGear = Instance.new("TextButton")
+local UICorner_12 = Instance.new("UICorner")
+local Image_2 = Instance.new("ImageLabel")
+local UICorner_13 = Instance.new("UICorner")
+local GearName_2 = Instance.new("TextLabel")
+local Favorite_2 = Instance.new("ImageButton")
+local UICorner_14 = Instance.new("UICorner")
+
+GearsGUI.Name = "GearsGUI"
+GearsGUI.ResetOnSpawn = false
+GearsGUI.IgnoreGuiInset = true
+GearsGUI.Parent = game.CoreGui
+GearsGUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+Frame.Parent = GearsGUI
+Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Frame.AnchorPoint = Vector2.new(0.5, 0.5)
+Frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+Frame.Size = UDim2.new(0, 646, 0, 443)
+Frame.Visible = true
+
+UICorner.CornerRadius = UDim.new(0.0500000007, 0)
+UICorner.Parent = Frame
+
+Title.Name = "Title"
+Title.Parent = Frame
+Title.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Title.BackgroundTransparency = 2.000
+Title.BorderSizePixel = 0
+Title.Position = UDim2.new(0.111, 0, 0.029, 0)
+Title.Size = UDim2.new(0, 75, 0, 24)
+Title.Font = Enum.Font.SourceSansBold
+Title.Text = "Gears GUI"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 23.000
+Title.TextWrapped = true
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+Title_2.Name = "Title"
+Title_2.Parent = Frame
+Title_2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Title_2.BackgroundTransparency = 2.000
+Title_2.BorderSizePixel = 0
+Title_2.Position = UDim2.new(0.111, 0, 0.089, 0)
+Title_2.Size = UDim2.new(0, 146, 0, 24)
+Title_2.Font = Enum.Font.SourceSansBold
+Title_2.Text = "By xbox#0109"
+Title_2.TextColor3 = Color3.fromRGB(235, 235, 235)
+Title_2.TextSize = 20.000
+Title_2.TextWrapped = true
+Title_2.TextXAlignment = Enum.TextXAlignment.Left
+
+ImageLabel.Parent = Frame
+ImageLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+ImageLabel.BackgroundTransparency = 1.000
+ImageLabel.Position = UDim2.new(0.021, 0, 0.029, 0)
+ImageLabel.Size = UDim2.new(0, 50, 0, 50)
+ImageLabel.Image = "rbxassetid://7938968529"
+ImageLabel.ScaleType = Enum.ScaleType.Fit
+
+UICorner_2.CornerRadius = UDim.new(1, 0)
+UICorner_2.Parent = ImageLabel
+
+ImageButton.Parent = Frame
+ImageButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+ImageButton.BackgroundTransparency = 1.000
+ImageButton.BorderSizePixel = 0
+ImageButton.Position = UDim2.new(0.92592597, 0, 0.0320340097, 0)
+ImageButton.Size = UDim2.new(0, 25, 0, 25)
+ImageButton.AutoButtonColor = false
+ImageButton.Image = "rbxassetid://3944676352"
+ImageButton.ScaleType = Enum.ScaleType.Fit
+
+Frame_2.Parent = Frame
+Frame_2.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Frame_2.BorderSizePixel = 0
+Frame_2.Position = UDim2.new(0, 0, 0.187358916, 0)
+Frame_2.Size = UDim2.new(0, 646, 0, 360)
+
+Gears_2.Name = "Gears"
+Gears_2.Parent = Frame_2
+Gears_2.Active = true
+Gears_2.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Gears_2.BackgroundTransparency = 1.000
+Gears_2.BorderSizePixel = 0
+Gears_2.CanvasSize = UDim2.new(0, 0, 0, 0)
+Gears_2.Position = UDim2.new(0.0211640205, 0, 0.124545068, 0)
+Gears_2.Size = UDim2.new(0, 415, 0, 301)
+Gears_2.ScrollBarThickness = 5
+
+UIListLayout.Parent = Gears_2
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 0)
+
+GetFavorited.Name = "GetFavorited"
+GetFavorited.Parent = Frame_2
+GetFavorited.BackgroundColor3 = Color3.fromRGB(93, 194, 110)
+GetFavorited.AutoButtonColor = false
+GetFavorited.BorderSizePixel = 0
+GetFavorited.Position = UDim2.new(0.684, 0, 0.795, 0)
+GetFavorited.Size = UDim2.new(0, 203, 0, 25)
+GetFavorited.Font = Enum.Font.SourceSans
+GetFavorited.Text = "Get all favourited gears"
+GetFavorited.TextColor3 = Color3.fromRGB(255, 255, 255)
+GetFavorited.TextSize = 14.000
+GetFavorited.TextWrapped = true
+
+UICorner_3.CornerRadius = UDim.new(1, 0)
+UICorner_3.Parent = GetFavorited
+
+ClearFavorited.Name = "ClearFavorited"
+ClearFavorited.Parent = Frame_2
+ClearFavorited.AutoButtonColor = false
+ClearFavorited.BackgroundColor3 = Color3.fromRGB(244, 91, 83)
+ClearFavorited.BorderSizePixel = 0
+ClearFavorited.Position = UDim2.new(0.684, 0, 0.866, 0)
+ClearFavorited.Size = UDim2.new(0, 203, 0, 25)
+ClearFavorited.Font = Enum.Font.SourceSans
+ClearFavorited.Text = "Clear favorited gears"
+ClearFavorited.TextColor3 = Color3.fromRGB(255, 255, 255)
+ClearFavorited.TextSize = 14.000
+ClearFavorited.TextWrapped = true
+
+UICorner_4.CornerRadius = UDim.new(1, 0)
+UICorner_4.Parent = ClearFavorited
+
+UICorner_5.CornerRadius = UDim.new(0.0500000007, 0)
+UICorner_5.Parent = Frame_2
+
+SearchFrame.Name = "SearchFrame"
+SearchFrame.Parent = Frame_2
+SearchFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+SearchFrame.Position = UDim2.new(0.0211640205, 0, 0.0250000004, 0)
+SearchFrame.Size = UDim2.new(0, 427, 0, 25)
+
+UICorner_6.CornerRadius = UDim.new(1, 0)
+UICorner_6.Parent = SearchFrame
+
+Search.Name = "Search"
+Search.Parent = SearchFrame
+Search.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Search.BackgroundTransparency = 1.000
+Search.BorderSizePixel = 0
+Search.Position = UDim2.new(0.0111524165, 0, 0, 0)
+Search.Size = UDim2.new(0, 25, 1, 0)
+Search.Image = "rbxassetid://3605509925"
+Search.ScaleType = Enum.ScaleType.Fit
+
+TextBox.Parent = SearchFrame
+TextBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.BackgroundTransparency = 1.000
+TextBox.BorderSizePixel = 0
+TextBox.Position = UDim2.new(0.07, 0, 0, 0)
+TextBox.Size = UDim2.new(-0.012, 506, 1, 0)
+TextBox.ClearTextOnFocus = false
+TextBox.Font = Enum.Font.SourceSans
+TextBox.PlaceholderText = "Search Gears"
+TextBox.Text = ""
+TextBox.TextColor3 = Color3.fromRGB(240, 240, 240)
+TextBox.TextScaled = true
+TextBox.TextSize = 14.000
+TextBox.TextWrapped = true
+TextBox.TextXAlignment = Enum.TextXAlignment.Left
+
+Frame_3.Parent = Frame_2
+Frame_3.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Frame_3.Position = UDim2.new(0.683, 0, 0.094, 0)
+Frame_3.Size = UDim2.new(0, 204, 0, 246)
+
+Favorited.Name = "Favorited"
+Favorited.Parent = Frame_3
+Favorited.Active = true
+Favorited.CanvasSize = UDim2.new(0, 0, 0, 0)
+Favorited.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Favorited.BackgroundTransparency = 1.000
+Favorited.BorderSizePixel = 0
+Favorited.Position = UDim2.new(0, 0, 0.024390243, 0)
+Favorited.Size = UDim2.new(1, 0, 0, 232)
+Favorited.ScrollBarThickness = 5
+
+UIListLayout_2.Parent = Favorited
+UIListLayout_2.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout_2.Padding = UDim.new(0, 0)
+
+UICorner_7.CornerRadius = UDim.new(0.100000001, 0)
+UICorner_7.Parent = Frame_3
+
+Storage.Name = "Storage"
+Storage.Parent = GearsGUI
+
+Gear.Name = "Gear"
+Gear.Parent = Storage
+Gear.AutoButtonColor = false
+Gear.Text = ""
+Gear.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Gear.BorderSizePixel = 0
+Gear.Size = UDim2.new(0, 410, 0, 55)
+Gear.Visible = false
+
+Circle.Name = "Circle"
+Circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Circle.BackgroundTransparency = 1.000
+Circle.BorderSizePixel = 0
+Circle.ZIndex = 10
+Circle.Image = "rbxassetid://266543268"
+Circle.ImageTransparency = 0.900
+Circle.Parent = Storage
+
+UICorner_8.CornerRadius = UDim.new(0.25, 0)
+UICorner_8.Parent = Gear
+
+Image.Name = "Image"
+Image.Parent = Gear
+Image.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Image.BorderSizePixel = 0
+Image.Position = UDim2.new(0.0146341464, 0, 0.0363636352, 0)
+Image.Size = UDim2.new(0, 50, 0, 50)
+Image.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+Image.ScaleType = Enum.ScaleType.Fit
+
+UICorner_9.CornerRadius = UDim.new(0.25, 0)
+UICorner_9.Parent = Image
+
+GearName.Name = "GearName"
+GearName.Parent = Gear
+GearName.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+GearName.BackgroundTransparency = 1.000
+GearName.BorderSizePixel = 0
+GearName.Position = UDim2.new(0.158536583, 0, 0.0363636352, 0)
+GearName.Size = UDim2.new(0, 316, 0, 50)
+GearName.Font = Enum.Font.SourceSans
+GearName.TextWrapped = true
+GearName.Text = "Loading"
+GearName.TextColor3 = Color3.fromRGB(240, 240, 240)
+GearName.TextSize = 20.000
+
+Favorite.Name = "Favorite"
+Favorite.Parent = Gear
+Favorite.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Favorite.BackgroundTransparency = 1.000
+Favorite.BorderSizePixel = 0
+Favorite.Position = UDim2.new(0.929268122, 0, 0.127272725, 0)
+Favorite.Size = UDim2.new(0, 20, 0, 20)
+Favorite.AutoButtonColor = false
+Favorite.Image = "rbxassetid://4335482118"
+Favorite.ImageColor3 = Color3.fromRGB(245, 136, 106)
+Favorite.ScaleType = Enum.ScaleType.Fit
+
+UICorner_10.CornerRadius = UDim.new(1, 0)
+UICorner_10.Parent = Favorite
+
+FavoriteGear.Name = "FavoriteGear"
+FavoriteGear.Parent = Storage
+FavoriteGear.AutoButtonColor = false
+FavoriteGear.Active = false
+FavoriteGear.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+FavoriteGear.BorderSizePixel = 0
+FavoriteGear.Selectable = false
+FavoriteGear.Size = UDim2.new(0, 198, 0, 55)
+FavoriteGear.Visible = false
+FavoriteGear.Font = Enum.Font.SourceSans
+FavoriteGear.Text = ""
+
+UICorner_12.CornerRadius = UDim.new(0.25, 0)
+UICorner_12.Parent = FavoriteGear
+
+Image_2.Name = "Image"
+Image_2.Parent = FavoriteGear
+Image_2.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Image_2.BorderSizePixel = 0
+Image_2.Position = UDim2.new(0.0146341464, 0, 0.0363636352, 0)
+Image_2.Size = UDim2.new(0, 50, 0, 50)
+Image_2.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+Image_2.ScaleType = Enum.ScaleType.Fit
+
+UICorner_13.CornerRadius = UDim.new(0.25, 0)
+UICorner_13.Parent = Image_2
+
+GearName_2.Name = "GearName"
+GearName_2.Parent = FavoriteGear
+GearName_2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+GearName_2.BackgroundTransparency = 1.000
+GearName_2.BorderSizePixel = 0
+GearName_2.Position = UDim2.new(0.299950808, 0, 0.0363636352, 0)
+GearName_2.Size = UDim2.new(0, 105, 0, 50)
+GearName_2.Font = Enum.Font.SourceSans
+GearName_2.Text = "Loading"
+GearName_2.TextColor3 = Color3.fromRGB(240, 240, 240)
+GearName_2.TextSize = 20.000
+GearName_2.TextWrapped = true
+
+Favorite_2.Name = "Favorite"
+Favorite_2.Parent = FavoriteGear
+Favorite_2.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Favorite_2.BackgroundTransparency = 1.000
+Favorite_2.BorderSizePixel = 0
+Favorite_2.Position = UDim2.new(0.858561099, 0, 0.145454541, 0)
+Favorite_2.Size = UDim2.new(0, 20, 0, 20)
+Favorite_2.AutoButtonColor = false
+Favorite_2.Image = FavoritedImage
+Favorite_2.ImageColor3 = Color3.fromRGB(245, 136, 106)
+Favorite_2.ScaleType = Enum.ScaleType.Fit
+
+UICorner_14.CornerRadius = UDim.new(1, 0)
+UICorner_14.Parent = Favorite_2
+
+function WriteFile(FileName, Data)
+	writefile(FileName, HttpService:JSONEncode(Data))
+end
+
+function ReadFile(FileName)
+	return HttpService:JSONDecode(readfile(FileName))
+end
+
+local Success, Error = pcall(function()
+	readfile(SettingsFile)
+end)
+
+local SettingsToWrite = {}
+
+for Setting, Options in pairs(AvailableSettings) do
+	SettingsToWrite[Setting] = true
+end
+
+if not Success then
+	WriteFile(SettingsFile, SettingsToWrite)
+end
+
+local Settings = ReadFile(SettingsFile)
+
+if Settings.AutoUnJail == nil then
+	Settings.AutoUnJail = true
+end
+
+if Settings.AutoUnPunish == nil then
+	Settings.AutoUnPunish = true
+end
+
+if Settings.AutoGetAdmin == nil then
+	Settings.AutoGetAdmin = true
+end
+
+if Settings.AutoForceField == nil then
+	Settings.AutoForceField = true
+end
+
+if Settings.AutoClear == nil then
+	Settings.AutoClear = true
+end
+
+WriteFile(SettingsFile, Settings)
+
+Settings = ReadFile(SettingsFile)
+
+getgenv().AutoUnJail = Settings.AutoUnJail
+getgenv().AutoUnPunish = Settings.AutoUnPunish
+getgenv().AutoGetAdmin = Settings.AutoGetAdmin
+getgenv().AutoForceField = Settings.AutoForceField
+getgenv().AutoClear = Settings.AutoClear
+
+warn("Loaded Settings")
+
+local Success, Error = pcall(function()
+	readfile(FavoritedGearsFile)
+end)
+
+if not Success then
+	WriteFile(FavoritedGearsFile, {})
+end
+
+local FavoritedGears = ReadFile(FavoritedGearsFile)
+
+warn("Loaded FavoritedGears")
+
+function tobool(Bool)
+	if Bool == "true" then
+		return true
+	elseif Bool == "false" then
+		return false
+	else
+		return nil
+	end
+end
+
+function toseconds(Milliseconds)
+	return Milliseconds / 1000
+end
+
+function GetPings()
+	return Pings:GetValue()
+end
+
+function GetWaitTime(Seconds, WaitTime)
+	return (Seconds + 2.5) * (1 / WaitTime)
+end
+
+function Update(Input)
+	local Delta = Input.Position - DragStart
+
+	Frame.Position = UDim2.new(StartPosition.X.Scale, StartPosition.X.Offset + Delta.X, StartPosition.Y.Scale, StartPosition.Y.Offset + Delta.Y)
+end
+
+function UpdateCanvasSize(ScrollingFrame, Layout, Axis)
+	if Axis == "X" then
+		ScrollingFrame.CanvasSize = UDim2.new(0, Layout.AbsoluteContentSize.X, ScrollingFrame.CanvasSize.Y.Scale, ScrollingFrame.CanvasSize.Y.Offset)
+	elseif Axis == "Y" then
+		ScrollingFrame.CanvasSize = UDim2.new(ScrollingFrame.CanvasSize.X.Scale, ScrollingFrame.CanvasSize.X.Offset, 0, Layout.AbsoluteContentSize.Y)
+	elseif Axis == "XY" then
+		ScrollingFrame.CanvasSize = UDim2.new(0, Layout.AbsoluteContentSize.X, 0, Layout.AbsoluteContentSize.Y)
+	end
+end
+
+function AutomaticCanvasSize(ScrollingFrame, Axis)
+	local Layout = ScrollingFrame:FindFirstChildOfClass("UIListLayout") or ScrollingFrame:FindFirstChildOfClass("UIGridLayout")
+
+	UpdateCanvasSize(ScrollingFrame, Layout, Axis)
+
+	Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		UpdateCanvasSize(ScrollingFrame, Layout, Axis)
+	end)
+end
+
+function ButtonEffect(Button)
+	Button.AutoButtonColor = false
+
+	Button:SetAttribute("OriginalColor", Button.BackgroundColor3)
+
+	Button.MouseEnter:Connect(function()
+		TweenService:Create(Button, TweenInfo.new(0.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut), {BackgroundColor3 = Color3.fromRGB(85, 136, 158)}):Play()
+	end)
+
+	Button.MouseLeave:Connect(function()
+		TweenService:Create(Button, TweenInfo.new(0.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut), { BackgroundColor3 = Button:GetAttribute("OriginalColor") }):Play()
+	end)
+end
+
+function RippleEffect(Button)
+	Button.ClipsDescendants = true
+
+	Button.MouseButton1Click:Connect(function()
+		local NewCircle = Circle:Clone()
+
+		NewCircle.Parent = Button
+
+		NewCircle.Position = UDim2.new(0, Mouse.X - NewCircle.AbsolutePosition.X, 0, Mouse.Y - NewCircle.AbsolutePosition.Y)
+
+		local Size = 0
+
+		if Button.AbsoluteSize.X > Button.AbsoluteSize.Y then
+			Size = Button.AbsoluteSize.X * 1.5
+		elseif Button.AbsoluteSize.X < Button.AbsoluteSize.Y then
+			Size = Button.AbsoluteSize.Y * 1.5
+		elseif Button.AbsoluteSize.X == Button.AbsoluteSize.Y then
+			Size = Button.AbsoluteSize.X * 1.5
+		end
+
+		NewCircle:TweenSizeAndPosition(UDim2.new(0, Size, 0, Size), UDim2.new(0.5, -Size / 2, 0.5, -Size / 2), "Out", "Quad", 0.5)
+		TweenService:Create(NewCircle, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
+
+		wait(0.5)
+
+		NewCircle:Destroy()
+	end)
+end
+
+function CreateNewFavoritedGear(GearItem, NewGear)
+	local NewFavoriteGear = FavoriteGear:Clone()
+
+	NewFavoriteGear.Name = GearItem.name
+	NewFavoriteGear.GearName.Text = GearItem.name
+	NewFavoriteGear.Image.Image = "https://www.roblox.com/asset-thumbnail/image?assetId=" .. GearItem.id .. "&width=100&height=100&format=png"
+	NewFavoriteGear.Parent = Favorited
+	NewFavoriteGear.Visible = true
+
+	RippleEffect(NewFavoriteGear)
+	ButtonEffect(NewFavoriteGear)
+
+	if not NewFavoriteGear.GearName.TextFits then
+		NewFavoriteGear.GearName.TextScaled = true
+	end
+
+	NewFavoriteGear.MouseButton1Click:Connect(function()
+		GiveGear(LocalPlayer, GearItem.id)
+	end)
+
+	NewFavoriteGear.Favorite.MouseButton1Click:Connect(function()
+		local Found = false
+		local FoundIndex = nil
+
+		for Index, FavoritedGear in pairs(FavoritedGears) do
+			if FavoritedGear.id == GearItem.id then
+				Found = true
+				FoundIndex = Index
+			end
+		end
+
+		if Found then
+			table.remove(FavoritedGears, FoundIndex)
+
+			WriteFile(FavoritedGearsFile, FavoritedGears)
+
+			FavoritedGears = ReadFile(FavoritedGearsFile)
+		end
+
+		NewFavoriteGear:Destroy()
+		NewGear.Favorite.Image = NotFavoritedImage
+	end)
+end
+
+function AddCommand(Command, Aliases, Settings, Function)
+	Commands[Command] = Settings
+
+	Commands[Command].Run = Function
+
+	for Index, Aliase in pairs(Aliases) do
+		Commands[Aliase] = Settings
+
+		Commands[Command].Run = Commands[Command].Run
+	end
+end
+
+function FindPlayer(Name)
+	if Name == nil or Name == "" or Name == "me" then
+		return {LocalPlayer}
+	elseif Name == "all" then
+		return Players:GetPlayers()
+	elseif Name == "others" then
+		local PlayerList = {}
+
+		for Index, Player in pairs(Players:GetPlayers()) do
+			if Player.UserId ~= LocalPlayer.UserId then
+				table.add(PlayerList, Player)
+			end
+		end
+
+		return PlayerList
+	else
+		local PlayerList = {}
+
+		for Index, Player in pairs(Players:GetPlayers()) do
+			if Player.Name:lower():sub(1, #Name) == Name then
+				table.add(PlayerList, Player)
+			end
+		end
+
+		return PlayerList
+	end
+end
+
+function AdminPadsAvailable()
+	local Count = 0
+
+	for Index, Object in pairs(AdminPads:GetChildren()) do
+		if Object.Name == "Touch to get admin" then
+			Count = Count + 1
+		end
+	end
+
+	return Count
+end
+
+function ExecuteCommand(Command)
+	if not SupportedPlaces[game.PlaceId].FreeAdmin and not IsAdmin(LocalPlayer) then
+		Commands.getadmin.Run()
+	end
+
+	Players:Chat(SupportedPlaces[game.PlaceId].Prefix .. Command)
+
+	if SupportedPlaces[game.PlaceId].CommandCooldown ~= 0 then
+		wait(SupportedPlaces[game.PlaceId].CommandCooldown)
+	end
+end
+
+function ChangeSettings(Setting, Enabled)
+	if tobool(Enabled) == nil then
+		warn("Invalid arguments provided for " .. Setting .. ", please select between true or false.")
+	else
+		if getgenv()[Setting] == tobool(Enabled) then
+			warn("" .. Setting .. " is already set to " .. Enabled)
+		else
+			if getgenv().Locked then
+				warn("Cannot change setting for " .. Setting .. ", Changing settings is temporarily locked.\nPlease try again later.")
+			else
+				getgenv()[Setting] = tobool(Enabled)
+
+				warn("Set " .. Setting .. " to " .. Enabled)
+
+				Settings[Setting] = tobool(Enabled)
+
+				WriteFile(SettingsFile, Settings)
+
+				Settings = ReadFile(SettingsFile)
+			end
+		end
+	end
+end
+
+AddCommand("resetadmin", {
+	"ra"
+}, {
+	SupportFreeAdmin = true,
+	Arguments = 0,
+	IgnoreSpace = false
+}, function()
+	if SupportedPlaces[game.PlaceId].FreeAdmin then
+		warn("This place does not support resetadmin.")
+	else
+		getgenv().GettingAdmin = true
+
+		pcall(function()
+			local Root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+			local OldCFrame = Root.CFrame
+
+			local Count = 0
+			local WaitTime = GetWaitTime(toseconds(GetPings()), RunService.Heartbeat:Wait())
+			
+			local Break = false
+
+			repeat
+				if Count >= WaitTime then
+					warn("Server took too long to reset admin, possible somethings wrong with the admin pads or your character.")
+					
+					Break = true
+					
+					break
+				end
+
+				Count = Count + 1
+				
+				Root.CFrame = ResetAdminClickDetector.Parent.CFrame
+				
+				fireclickdetector(ResetAdminClickDetector)
+
+				RunService.Heartbeat:Wait()
+			until not IsAdmin(LocalPlayer)
+
+			Root.CFrame = OldCFrame * CFrame.new(0, 2, 0)
+			
+			if not Break then
+				warn("Resetted Admin")
+			end
+		end)
+
+		getgenv().GettingAdmin = false
+	end
+end)
+
+AddCommand("getadmin", {
+	"ga"
+}, {
+	SupportFreeAdmin = true,
+	Arguments = 0,
+	IgnoreSpace = false
+}, function()
+	if getgenv().GettingAdmin then
+		local Count = 0
+		local WaitTime = GetWaitTime(toseconds(GetPings()), RunService.Heartbeat:Wait())
+		
+		repeat
+			if Count >= WaitTime then
+				warn("Server took too long to give admin, possible somethings wrong with the reset button or your character.")
+				
+				break
+			end
+
+			Count = Count + 1
+
+			RunService.Heartbeat:Wait()
+		until not getgenv().GettingAdmin
+		
+		return
+	end
+	
+	if getgenv().ResettingAdmin then
+		return warn("Cannot get admin, still resetting admin.\nPlease try again later.")
+	end
+
+	getgenv().GettingAdmin = true
+	
+	getgenv().Locked = true
+	
+	for Setting, Options in pairs(AvailableSettings) do
+		getgenv()[Setting] = false
+	end
+
+	if not IsAdmin(LocalPlayer) then
+		if AdminPadsAvailable() == 0 then
+			Commands.resetadmin.Run()
+			
+			--local Count = 0
+			--local WaitTime = GetWaitTime(toseconds(GetPings()), RunService.Heartbeat:Wait())
+
+			--repeat
+			--	if Count >= WaitTime then
+			--		warn("Server took too long to reset admin, possible somethings wrong with the reset button.")
+
+			--		break
+			--	end
+
+			--	Count = Count + 1
+
+			--	RunService.Heartbeat:Wait()
+			--until AdminPadsAvailable() >= 3
+		end
+
+		pcall(function()
+			local Pad = AdminPads:FindFirstChild("Touch to get admin")
+			local Root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+			
+			if SupportedPlaces[game.PlaceId].GetAdminType == "Fire" then
+				local Count = 0
+				local WaitTime = GetWaitTime(toseconds(GetPings()), 0.1)
+
+				repeat
+					if Count >= WaitTime then
+						warn("Server took too long to give admin, possible somethings wrong with the admin pads or your character.")
+
+						break
+					end
+
+					Count = Count + 1
+
+					firetouchinterest(Pad.Head, Root, 1)
+					wait(0.1)
+					firetouchinterest(Pad.Head, Root, 0)
+				until IsAdmin(LocalPlayer)
+			elseif SupportedPlaces[game.PlaceId].GetAdminType == "Teleport" then
+				local OldCFrame = Root.CFrame
+
+				local Count = 0
+				local WaitTime = GetWaitTime(toseconds(GetPings()), 0.1)
+
+				repeat
+					if Count >= WaitTime then
+						warn("Server took too long to give admin, possible somethings wrong with the admin pads or your character.")
+
+						break
+					end
+
+					Count = Count + 1
+
+					Root.CFrame = Pad.Head.CFrame * CFrame.new(0, math.random(0, 2), 0)
+
+					firetouchinterest(Pad.Head, Root, 1)
+					wait(0.1)
+					firetouchinterest(Pad.Head, Root, 0)
+				until IsAdmin(LocalPlayer)
+
+				Root.CFrame = OldCFrame * CFrame.new(0, 2, 0)
+			end
+		end)
+	end
+
+	getgenv().GettingAdmin = false
+	
+	for Setting, Options in pairs(AvailableSettings) do
+		getgenv()[Setting] = Settings[Setting]
+	end
+
+	getgenv().Locked = false
+end)
+
+AddCommand("execute", {
+	"exe",
+	"run"
+}, {
+	SupportFreeAdmin = true,
+	Arguments = 1,
+	IgnoreSpace = true
+}, function(Arguments)
+	loadstring(Arguments[1])()
+end)
+
+AddCommand("respawn", {
+	"res"
+}, {
+	SupportFreeAdmin = true,
+	Arguments = 0,
+	IgnoreSpace = false
+}, function()
+	local Character = LocalPlayer.Character
+
+	if Character:FindFirstChildOfClass("Humanoid") then
+		Character:FindFirstChildOfClass("Humanoid"):ChangeState(15)
+	end
+
+	Character:ClearAllChildren()
+
+	local NewCharacter = Instance.new("Model")
+
+	NewCharacter.Parent = Workspace
+
+	LocalPlayer.Character = NewCharacter
+
+	RunService.Heartbeat:Wait()
+
+	LocalPlayer.Character = Character
+
+	NewCharacter:Destroy()
+end)
+
+AddCommand("refresh", {
+	"re"
+}, {
+	SupportFreeAdmin = true,
+	Arguments = 0,
+	IgnoreSpace = false
+}, function()
+	local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+
+	local OldCFrame = Humanoid and Humanoid.RootPart and Humanoid.RootPart.CFrame
+	local OldCFrame2 = Workspace.CurrentCamera.CFrame
+
+	Commands.respawn.Run()
+
+	LocalPlayer.CharacterAdded:Wait():WaitForChild("Humanoid").RootPart.CFrame, Workspace.CurrentCamera.CFrame = OldCFrame, RunService.Heartbeat:Wait() and OldCFrame2
+end)
+
+AddCommand("unjail", {
+	"uj"
+}, {
+	SupportFreeAdmin = true,
+	Arguments = 0,
+	IgnoreSpace = false
+}, function()
+	if getgenv().UnJailing then
+		return
+	end
+
+	getgenv().UnJailing = true
+
+	if SupportedPlaces[game.PlaceId].FreeAdmin then
+		ExecuteCommand("unjail me")
+	else
+		if not IsAdmin(LocalPlayer) then
+			Commands.getadmin.Run()
+		end
+
+		ExecuteCommand("unjail me")
+	end
+	
+	local Count = 0
+	local WaitTime = GetWaitTime(toseconds(GetPings()), RunService.Heartbeat:Wait())
+
+	repeat
+		if Count >= WaitTime then
+			warn("Server took too long to respond to unjail command, possible not having admin/problems with admin commands or your character.")
+			
+			break
+		end
+		
+		Count = Count + 1
+		
+		RunService.Heartbeat:Wait()
+	until not Jails:FindFirstChild(SupportedPlaces[game.PlaceId].JailName)
+
+	getgenv().UnJailing = false
+end)
+
+AddCommand("unpunish", {
+	"up"
+}, {
+	SupportFreeAdmin = true,
+	Arguments = 0,
+	IgnoreSpace = false
+}, function()
+	if getgenv().UnPunishing then
+		return
+	end
+
+	getgenv().UnPunishing = true
+
+	if SupportedPlaces[game.PlaceId].FreeAdmin then
+		ExecuteCommand("unpunish me")
+	else
+		if IsAdmin(LocalPlayer) then
+			ExecuteCommand("unpunish me")
+		else
+			--if SupportedPlaces[game.PlaceId].UnPunishType == "Respawn" then
+			Commands.refresh.Run()
+			--elseif SupportedPlaces[game.PlaceId].UnPunishType == "Command" then
+			--	Commands.getadmin.Run()
+				
+			--	repeat
+			--		RunService.Heartbeat:Wait()
+			--	until IsAdmin(LocalPlayer)
+			--end
+		end
+	end
+
+	local Count = 0
+	local WaitTime = GetWaitTime(toseconds(GetPings()), RunService.Heartbeat:Wait())
+
+	repeat
+		if Count >= WaitTime then
+			warn("Server took too long to respond to unpunish command, possible not having admin/problems with admin commands or your character.")
+
+			break
+		end
+
+		Count = Count + 1
+
+		RunService.Heartbeat:Wait()
+	until not Lighting:FindFirstChild(LocalPlayer.Name)
+
+	getgenv().UnPunishing = false
+end)
+
+AddCommand("forcefield", {
+	"ff"
+}, {
+	SupportFreeAdmin = true,
+	Arguments = 0,
+	IgnoreSpace = false
+}, function()
+	if getgenv().GivingForceField then
+		return
+	end
+
+	getgenv().GivingForceField = true
+
+	if SupportedPlaces[game.PlaceId].FreeAdmin then
+		ExecuteCommand("ff me")
+	else
+		if not IsAdmin(LocalPlayer) then
+			Commands.getadmin.Run()
+		end
+		
+		ExecuteCommand("ff me")
+	end
+	
+	local Count = 0
+	local WaitTime = GetWaitTime(toseconds(GetPings()), RunService.Heartbeat:Wait())
+
+	repeat
+		if Count >= WaitTime then
+			warn("Server took too long to respond to forcefield command, possible not having admin/problems with admin commands or your character.")
+
+			break
+		end
+
+		Count = Count + 1
+
+		RunService.Heartbeat:Wait()
+	until LocalPlayer.Character:FindFirstChildOfClass("ForceField")
+
+	getgenv().GivingForceField = false
+end)
+
+AddCommand("clear", {
+	"clr",
+	"c"
+}, {
+	SupportFreeAdmin = true,
+	Arguments = 0,
+	IgnoreSpace = false
+}, function()
+	if getgenv().Clearing then
+		return
+	end
+
+	getgenv().Clearing = true
+
+	if SupportedPlaces[game.PlaceId].FreeAdmin then
+		ExecuteCommand("clear")
+	else
+		if not IsAdmin(LocalPlayer) then
+			Commands.getadmin.Run()
+		end
+
+		ExecuteCommand("clear")
+	end
+
+	getgenv().Clearing = false
+end)
+
+for Setting, Options in pairs(AvailableSettings) do
+	AddCommand(Setting:lower(), Options.Aliases, {
+		SupportFreeAdmin = true,
+		Arguments = 1,
+		IgnoreSpace = false
+	}, function(Arguments)
+		ChangeSettings(Setting, Arguments[1])
+	end)
+end
+
+function GiveGear(Player, GearId)
+	ExecuteCommand(game:GetService("ReplicatedStorage").HDAdminClient.Signals.RequestCommand:InvokeServer(":gear " .. tostring(Player.Name) .. " " .. tostring(GearId)))
+end
+
+LocalPlayer.Chatted:Connect(function(Message)
+	if Message:sub(1, #CommandPrefix) == CommandPrefix or Message:sub(1, 3 + #CommandPrefix) == "/e " .. CommandPrefix then
+		local FullCommand
+
+		if Message:sub(1, 2) == "/e" then
+			FullCommand = Message:sub(3 + #CommandPrefix + 1)
+		else
+			FullCommand = Message:sub(#CommandPrefix + 1)
+		end
+
+		local Command = FullCommand:lower()
+
+		local Arguments = Command:split(" ")
+
+		Command = Arguments[1]
+
+		if Gears[Command] then
+			for Index, Player in pairs(FindPlayer(Arguments[2])) do
+				if Gears[Command].BasicGears then
+					for Index, GearId in ipairs(BasicGears) do
+						GiveGear(Player, GearId)
+					end
+				end
+
+				for Index, GearId in ipairs(Gears[Command].GearIds) do
+					GiveGear(Player, GearId)
+				end
+			end
+		else
+			if Commands[Command] then
+				if not Commands[Command].SupportFreeAdmin and SupportedPlaces[game.PlaceId].FreeAdmin then
+					return warn("Command not supported on this place")
+				end
+
+				local CommandArguments = {}
+
+				for Index, String in pairs(FullCommand:split(" ")) do
+					if Index == 1 then
+						continue
+					else
+						table.insert(CommandArguments, String)
+					end
+				end
+
+				if Commands[Command].IgnoreSpace then
+					local String = table.concat(CommandArguments, " ")
+
+					CommandArguments = {String}
+				end
+
+				Commands[Command].Run(CommandArguments)
+			else
+				warn("Command not found")
+			end
+		end
+	end
+end)
+
+UserInputService.InputBegan:Connect(function(Input, GameProcessedEvent)
+	if not GameProcessedEvent then
+		if Input.KeyCode == Enum.KeyCode.P then
+			if Cooldown then
+				return
+			end
+
+			Cooldown = true
+
+			if Frame.Visible == false then
+				Frame.Visible = true
+
+				Frame:TweenPosition(UDim2.new(0.5, 0, 0.5, 0), "In", "Quad", 0.5)
+
+				wait(0.5)
+			else
+				Frame:TweenPosition(UDim2.new(0.5, 0, 2, 0), "Out", "Quad", 0.5)
+
+				wait(0.5)
+
+				Frame.Visible = false
+			end
+
+			Cooldown = false
+		end
+	end
+end)
+
+ImageButton.MouseButton1Click:Connect(function()
+print("HAHAH YES")
+end)
+
+Frame.InputBegan:Connect(function(Input)
+	if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+		Dragging = true
+		DragStart = Input.Position
+		StartPosition = Frame.Position
+
+		Input.Changed:Connect(function()
+			if Input.UserInputState == Enum.UserInputState.End then
+				Dragging = false
+			end
+		end)
+	end
+end)
+
+Frame.InputChanged:Connect(function(Input)
+	if Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch then
+		DragInput = Input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(Input)
+	if Input == DragInput and Dragging then
+		Update(Input)
+	end
+end)
+
+TextBox:GetPropertyChangedSignal("Text"):Connect(function()
+	for Index, Object in pairs(Gears_2:GetChildren()) do
+		local Name = TextBox.Text:lower()
+
+		local NewName = Name:gsub("%s", "")
+
+		local ObjectName = Object.Name:lower()
+		local NewObjectName = ObjectName:gsub("%s", "")
+
+		if Object:IsA("TextButton") then
+			if NewObjectName:find(NewName) then
+				Object.Visible = true
+			else
+				Object.Visible = false
+			end
+		end
+	end
+end)
+
+GetFavorited.MouseButton1Click:Connect(function()
+	for Index, GearItem in pairs(FavoritedGears) do
+		GiveGear(LocalPlayer, GearItem.id)
+	end
+end)
+
+ClearFavorited.MouseButton1Click:Connect(function()
+	for Index, Object in pairs(Favorited:GetChildren()) do
+		if Object:IsA("TextButton") then
+			Gears_2:FindFirstChild(Object.Name).Favorite.Image = NotFavoritedImage
+
+			Object:Destroy()
+		end
+	end
+
+	WriteFile(FavoritedGearsFile, {})
+
+	FavoritedGears = {}
+end)
+
+RippleEffect(GetFavorited)
+RippleEffect(ClearFavorited)
+
+AutomaticCanvasSize(Favorited, "Y")
+AutomaticCanvasSize(Gears_2, "Y")
+
+local GearsData = HttpService:JSONDecode(game:HttpGet("https://raw.githubusercontent.com/iUnstable0/Roblox/main/Gears-Detailed.json"))
+
+for Index, GearItem in pairs(GearsData.data) do
+	local NewGear = Gear:Clone()
+
+	NewGear.Name = GearItem.name
+	NewGear.GearName.Text = GearItem.name
+	NewGear.Image.Image = "https://www.roblox.com/asset-thumbnail/image?assetId=" .. GearItem.id .. "&width=100&height=100&format=png"
+	NewGear.Visible = true
+	NewGear.Parent = Gears_2
+
+	local Found = false
+
+	for Index, FavoritedGear in pairs(HttpService:JSONDecode(readfile(FavoritedGearsFile))) do
+		if FavoritedGear.id == GearItem.id then
+			Found = true
+		end
+	end
+
+	if Found then
+		NewGear.Favorite.Image = FavoritedImage
+
+		CreateNewFavoritedGear(GearItem, NewGear)
+	else
+		NewGear.Favorite.Image = NotFavoritedImage
+	end
+
+	RippleEffect(NewGear)
+	ButtonEffect(NewGear)
+
+	NewGear.MouseButton1Click:Connect(function()
+		GiveGear(LocalPlayer, GearItem.id)
+	end)
+
+	NewGear.Favorite.MouseButton1Click:Connect(function()
+		local Found = false
+		local FoundIndex = nil
+
+		for Index, FavoritedGear in pairs(FavoritedGears) do
+			if FavoritedGear.id == GearItem.id then
+				Found = true
+				FoundIndex = Index
+			end
+		end
+
+		if Found then
+			table.remove(FavoritedGears, FoundIndex)
+
+			Favorited:WaitForChild(GearItem.name):Destroy()
+			NewGear.Favorite.Image = NotFavoritedImage
+		else
+			table.insert(FavoritedGears, {
+				name = GearItem.name,
+				id = GearItem.id
+			})
+
+			NewGear.Favorite.Image = FavoritedImage
+
+			CreateNewFavoritedGear(GearItem, NewGear)
+		end
+
+		WriteFile(FavoritedGearsFile, FavoritedGears)
+
+		FavoritedGears = ReadFile(FavoritedGearsFile)
+	end)
+end
+
+spawn(function()
+	while true do
+		if getgenv().AutoUnJail and Jails:FindFirstChild(SupportedPlaces[game.PlaceId].JailName) then
+			Commands.unjail.Run()
+		end
+
+		RunService.Heartbeat:Wait()
+	end
+end)
+
+spawn(function()
+	while true do
+		if getgenv().AutoUnPunish and Lighting:FindFirstChild(LocalPlayer.Name) then
+			Commands.unpunish.Run()
+		end
+
+		RunService.Heartbeat:Wait()
+	end
+end)
+
+spawn(function()
+	while true do
+		if getgenv().AutoGetAdmin and not IsAdmin(LocalPlayer) then
+			Commands.getadmin.Run()
+		end
+
+		RunService.Heartbeat:Wait()
+	end
+end)
+
+spawn(function()
+	while true do
+		if getgenv().AutoForceField and not LocalPlayer.Character:FindFirstChildOfClass("ForceField") then
+			Commands.forcefield.Run()
+		end
+
+		RunService.Heartbeat:Wait()
+	end
+end)
+
+spawn(function()
+	while true do
+		if getgenv().AutoClear then
+			Commands.clear.Run()
+		end
+
+		wait(10)
+	end
+end)
